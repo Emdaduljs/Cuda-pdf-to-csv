@@ -1,5 +1,4 @@
 from pytesseract import image_to_string
-from PIL import Image
 
 def extract_text_from_area(image, coords):
     left, top, right, bottom = map(int, coords)

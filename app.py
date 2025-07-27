@@ -37,7 +37,7 @@ if uploaded_file:
             text = extract_text_from_area(image, coords)
             st.text_area("Extracted Text", text, height=300)
 
-            # Prepare CSV content - simple comma separated values for demo
+            # Prepare CSV content
             csv_text = text.replace("\n", "\r\n")
             st.download_button(
                 "Download as CSV",
