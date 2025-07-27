@@ -36,5 +36,12 @@ if uploaded_file:
             st.markdown(f"**Extracting from area:** {coords}")
             text = extract_text_from_area(image, coords)
             st.text_area("Extracted Text", text, height=300)
-            st.download_button("Download as CSV", text.replace("\n", "
-"), file_name="output.csv")
+
+            # Prepare CSV content - simple comma separated values for demo
+            csv_text = text.replace("\n", "\r\n")
+            st.download_button(
+                "Download as CSV",
+                csv_text,
+                file_name="output.csv",
+                mime="text/csv"
+            )
