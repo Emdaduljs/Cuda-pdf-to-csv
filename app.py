@@ -1,20 +1,22 @@
 import streamlit as st
-from pdf_to_csv import converter
+from pdf_to_csv.converter import extract_tables_from_pdf
+import pandas as pd
 
-st.set_page_config(page_title="PDF to CSV Converter", layout="centered")
-st.title("📄➡️📊 PDF to CSV Converter")
+st.title("📄 PDF to CSV Extractor")
 
-uploaded_file = st.file_uploader("Upload your Excel macro file (.xlsm)", type=["xlsm"])
+uploaded_pdf = st.file_uploader("Upload your PDF", type=["pdf"])
 
-if uploaded_file:
-    st.success("File uploaded successfully!")
-    with open("uploaded.xlsm", "wb") as f:
-        f.write(uploaded_file.read())
+if uploaded_pdf:
+    tables = extract_tables_from_pdf(uploaded_pdf)
 
-    output_path = "output.csv"
-    success, message = converter.convert_excel_to_csv("uploaded.xlsm", output_path)
+    if tables:
+        table_names = [name for name, df in tables]
+        selected_table = st.selectbox("Select a table", table_names)
+        df = dict(tables)[selected_table]
+        st.dataframe(df)
 
-    if success:
-        st.download_button("Download CSV", data=open(output_path, "rb"), file_name="output.csv", mime="text/csv")
+        if st.button("Download CSV"):
+            csv = df.to_csv(index=False).encode('utf-8')
+            st.download_button("Download CSV", csv, "selected_table.csv", "text/csv")
     else:
-        st.error(f"Conversion failed: {message}")
+        st.warning("No tables found in the PDF.")
