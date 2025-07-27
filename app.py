@@ -2,7 +2,6 @@ import streamlit as st
 from pdf2image import convert_from_bytes
 from pdf_to_csv.converter import extract_text_from_area
 from streamlit_drawable_canvas import st_canvas
-from PIL import Image
 
 st.set_page_config(layout="wide")
 st.title("📄 PDF to CSV with Manual Table Area Selection")
@@ -37,7 +36,6 @@ if uploaded_file:
             text = extract_text_from_area(image, coords)
             st.text_area("Extracted Text", text, height=300)
 
-            # Prepare CSV content
             csv_text = text.replace("\n", "\r\n")
             st.download_button(
                 "Download as CSV",
