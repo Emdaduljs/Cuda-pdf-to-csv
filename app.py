@@ -1,47 +1,46 @@
 import streamlit as st
 import pandas as pd
-import pdfplumber
-from gspread_dataframe import set_with_dataframe
-import gspread
-from google.oauth2.service_account import Credentials
+import tabula  # requires Java installed
+import os
+from io import BytesIO
 
-st.set_page_config(page_title="Auto PDF → Sheet → CSV")
+st.set_page_config(page_title="PDF to CSV Converter", layout="centered")
 
-st.title("📄 PDF → Google Sheet → CSV Export")
+st.title("PDF to CSV Exporter")
 
-uploaded_pdf = st.file_uploader("Upload PDF", type=["pdf"])
-export_set = st.selectbox("Select Export Set", ["5 Set1", "5 Set2", "5 Set3", "5 Set4"])
+uploaded_file = st.file_uploader("Upload PDF", type=["pdf"])
 
-if st.button("Run & Upload to Sheet") and uploaded_pdf:
-    # Extract tables
-    tables = []
-    with pdfplumber.open(uploaded_pdf) as pdf:
-        for page in pdf.pages:
-            for tbl in page.extract_tables():
-                df = pd.DataFrame(tbl[1:], columns=tbl[0])
-                tables.append(df)
+export_options = ["Set 1", "Set 2", "Set 3", "Set 4", "Set 5"]
+selected_set = st.selectbox("Select Export Set", export_options)
 
-    if not tables:
-        st.warning("No tables found in PDF.")
-    else:
-        df_merged = pd.concat(tables, ignore_index=True)  # customize merging logic
+if st.button("Run & Export CSV"):
+    if uploaded_file is not None:
+        # Save the uploaded PDF temporarily
+        with open("temp.pdf", "wb") as f:
+            f.write(uploaded_file.read())
 
-        # Connect to Google Sheets
-        creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"],
-            scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"])
-        gc = gspread.authorize(creds)
-        ss = gc.open_by_url(st.secrets["private_gsheets_url"])
-
-        sheet_name = f"Set_{export_set.replace(' ', '_')}"
+        # Extract tables using Tabula (Java-based)
         try:
-            ws = ss.add_worksheet(title=sheet_name, rows=str(len(df_merged)+10), cols=str(len(df_merged.columns)))
-        except gspread.exceptions.APIError:
-            ws = ss.worksheet(sheet_name)
-        
-        set_with_dataframe(ws, df_merged)
+            dfs = tabula.read_pdf("temp.pdf", pages='all', multiple_tables=True)
+            # Simulate picking specific export set logic
+            if dfs:
+                df = dfs[0] if selected_set == "Set 1" else dfs[min(1, len(dfs)-1)]
+                st.success("Data extracted:")
+                st.dataframe(df)
 
-        st.success(f"✅ Data uploaded to Google Sheet tab: {sheet_name}")
-        st.dataframe(df_merged)
+                # Prepare download link
+                csv_data = df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="Download CSV",
+                    data=csv_data,
+                    file_name="converted.csv",
+                    mime="text/csv"
+                )
+            else:
+                st.error("No tables found in PDF.")
+        except Exception as e:
+            st.error(f"Failed to extract tables. Error: {str(e)}")
 
-        csv_bytes = df_merged.to_csv(index=False).encode("utf-8")
-        st.download_button("Download CSV", csv_bytes, file_name=f"{sheet_name}.csv", mime="text/csv")
+        os.remove("temp.pdf")
+    else:
+        st.warning("Please upload a PDF file.")
